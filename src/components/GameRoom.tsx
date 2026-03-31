@@ -29,6 +29,9 @@ interface Props {
   myLastHint: 'correct' | 'higher' | 'lower' | null;
   roundResult: RoundResult | null;
   gameOver: boolean;
+  myWins: number;
+  opponentWins: number;
+  ties: number;
   wantsPlayAgain: boolean;
   opponentWantsPlayAgain: boolean;
   onLockSecret: (secret: number) => void;
@@ -52,6 +55,9 @@ export default function GameRoom({
   myLastHint,
   roundResult,
   gameOver,
+  myWins,
+  opponentWins,
+  ties,
   wantsPlayAgain,
   opponentWantsPlayAgain,
   onLockSecret,
@@ -131,6 +137,21 @@ export default function GameRoom({
           <div className={`flex-1 h-1.5 rounded-full ${bothLocked ? 'bg-purple-500' : 'bg-purple-500/20'}`} />
         </div>
 
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="glass rounded-xl p-3 text-center">
+            <div className="text-xs text-gray-500">Your Wins</div>
+            <div className="text-xl font-bold text-green-400">{myWins}</div>
+          </div>
+          <div className="glass rounded-xl p-3 text-center">
+            <div className="text-xs text-gray-500">Ties</div>
+            <div className="text-xl font-bold text-yellow-400">{ties}</div>
+          </div>
+          <div className="glass rounded-xl p-3 text-center">
+            <div className="text-xs text-gray-500">{opponent.username} Wins</div>
+            <div className="text-xl font-bold text-red-400">{opponentWins}</div>
+          </div>
+        </div>
+
         {/* Main game card */}
         <div className="glass rounded-2xl p-6 mb-4">
           {/* Secret phase */}
@@ -195,6 +216,9 @@ export default function GameRoom({
           isP1={isP1}
           myUsername={me.username}
           opponentUsername={opponent.username}
+          myWins={myWins}
+          opponentWins={opponentWins}
+          ties={ties}
           wantsPlayAgain={wantsPlayAgain}
           opponentWantsPlayAgain={opponentWantsPlayAgain}
           onPlayAgain={onPlayAgain}

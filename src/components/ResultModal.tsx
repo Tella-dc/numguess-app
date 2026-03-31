@@ -14,6 +14,9 @@ interface Props {
   isP1: boolean;
   myUsername: string;
   opponentUsername: string;
+  myWins: number;
+  opponentWins: number;
+  ties: number;
   wantsPlayAgain: boolean;
   opponentWantsPlayAgain: boolean;
   onPlayAgain: () => void;
@@ -25,6 +28,9 @@ export default function ResultModal({
   isP1,
   myUsername,
   opponentUsername,
+  myWins,
+  opponentWins,
+  ties,
   wantsPlayAgain,
   opponentWantsPlayAgain,
   onPlayAgain,
@@ -79,7 +85,22 @@ export default function ResultModal({
           </div>
         </div>
 
-        <div className="text-xs text-gray-500 mb-6">Round {result.roundNumber}</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+            <div className="text-[11px] text-gray-500">You</div>
+            <div className="text-lg font-bold text-green-400">{myWins}</div>
+          </div>
+          <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+            <div className="text-[11px] text-gray-500">Ties</div>
+            <div className="text-lg font-bold text-yellow-400">{ties}</div>
+          </div>
+          <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+            <div className="text-[11px] text-gray-500">{opponentUsername}</div>
+            <div className="text-lg font-bold text-red-400">{opponentWins}</div>
+          </div>
+        </div>
+
+        <div className="text-xs text-gray-500 mb-6">Match score after round {result.roundNumber}</div>
 
         {/* Play again status */}
         {opponentWantsPlayAgain && !wantsPlayAgain && (
@@ -110,7 +131,7 @@ export default function ResultModal({
             onClick={onLeave}
             className="w-full py-3 rounded-xl border border-gray-700 hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
           >
-            Leave Game
+            Choose New Player
           </button>
         </div>
       </div>

@@ -30,6 +30,9 @@ interface GameState {
     roundNumber: number;
   } | null;
   gameOver: boolean;
+  myWins: number;
+  opponentWins: number;
+  ties: number;
 }
 
 export default function GamePage() {
@@ -56,6 +59,15 @@ export default function GamePage() {
         if (data.error) { router.push('/'); return; }
         const isP1 = data.player1Id === session.user.id;
         const currentRound = data.rounds[data.rounds.length - 1];
+        const completedRounds = data.rounds.filter((round: any) => round.winner !== null);
+        const myWins = completedRounds.filter((round: any) =>
+          (isP1 && round.winner === 'p1') || (!isP1 && round.winner === 'p2')
+        ).length;
+        const opponentWins = completedRounds.filter((round: any) =>
+          (isP1 && round.winner === 'p2') || (!isP1 && round.winner === 'p1')
+        ).length;
+        const ties = completedRounds.filter((round: any) => round.winner === 'tie').length;
+
         setGameState({
           roomId: data.id,
           player1: data.player1,
@@ -71,6 +83,9 @@ export default function GamePage() {
           myLastHint: null,
           roundResult: null,
           gameOver: data.status === 'finished',
+          myWins,
+          opponentWins,
+          ties,
         });
       });
   }, [session, roomId, router]);
@@ -108,29 +123,44 @@ export default function GamePage() {
 
     const offRoundResult = on('game:roundResult', (data: any) => {
       setGameState((prev) =>
-        prev ? { ...prev, roundResult: data, gameOver: true } : prev
+        prev
+          ? {
+              ...prev,
+              roundResult: data,
+              gameOver: true,
+              myWins:
+                data.winner === 'tie'
+                  ? prev.myWins
+                  : (prev.player1.id === session.user.id && data.winner === 'p1') ||
+                    (prev.player2.id === session.user.id && data.winner === 'p2')
+                  ? prev.myWins + 1
+                  : prev.myWins,
+              opponentWins:
+                data.winner === 'tie'
+                  ? prev.opponentWins
+                  : (prev.player1.id === session.user.id && data.winner === 'p2') ||
+                    (prev.player2.id === session.user.id && data.winner === 'p1')
+                  ? prev.opponentWins + 1
+                  : prev.opponentWins,
+              ties: data.winner === 'tie' ? prev.ties + 1 : prev.ties,
+            }
+          : prev
       );
     });
 
-    const offNextRound = on('game:nextRound', (data: { roundId: string; roundNumber: number }) => {
+    const offContinueGuessing = on('game:continueGuessing', (data: { roundId: string; roundNumber: number }) => {
       setGameState((prev) =>
         prev
           ? {
               ...prev,
               roundId: data.roundId,
               roundNumber: data.roundNumber,
-              mySecretLocked: false,
-              opponentSecretLocked: false,
-              bothLocked: false,
               iGuessed: false,
               opponentGuessed: false,
-              myLastGuess: null,
-              myLastHint: null,
-              roundResult: null,
             }
           : prev
       );
-      toast('Next round! Pick a new secret number.', { icon: '🔄' });
+      toast('No one got it yet. Keep guessing!', { icon: '🎯' });
     });
 
     const offOpponentLeft = on('game:opponentLeft', () => {
@@ -143,8 +173,29 @@ export default function GamePage() {
       toast('Opponent wants to play again!', { icon: '🔁' });
     });
 
-    const offGameStart = on('game:start', (data: any) => {
-      router.push(`/game/${data.roomId}`);
+    const offRematchStarted = on('game:rematchStarted', (data: { roomId: string; roundId: string; roundNumber: number }) => {
+      setWantsPlayAgain(false);
+      setOpponentWantsPlayAgain(false);
+      setGameState((prev) =>
+        prev
+          ? {
+              ...prev,
+              roomId: data.roomId,
+              roundId: data.roundId,
+              roundNumber: data.roundNumber,
+              mySecretLocked: false,
+              opponentSecretLocked: false,
+              bothLocked: false,
+              iGuessed: false,
+              opponentGuessed: false,
+              myLastGuess: null,
+              myLastHint: null,
+              roundResult: null,
+              gameOver: false,
+            }
+          : prev
+      );
+      toast.success('Rematch started! Pick a new secret number.');
     });
 
     return () => {
@@ -154,12 +205,12 @@ export default function GamePage() {
       offGuessResult();
       offOpponentGuessed();
       offRoundResult();
-      offNextRound();
+      offContinueGuessing();
       offOpponentLeft();
       offOpponentPlayAgain();
-      offGameStart();
+      offRematchStarted();
     };
-  }, [session, gameState, on, router]);
+  }, [session, gameState, on]);
 
   const lockSecret = useCallback((secret: number) => {
     if (!session || !gameState) return;
@@ -240,6 +291,9 @@ export default function GamePage() {
       myLastHint={gameState.myLastHint}
       roundResult={gameState.roundResult}
       gameOver={gameState.gameOver}
+      myWins={gameState.myWins}
+      opponentWins={gameState.opponentWins}
+      ties={gameState.ties}
       wantsPlayAgain={wantsPlayAgain}
       opponentWantsPlayAgain={opponentWantsPlayAgain}
       onLockSecret={lockSecret}

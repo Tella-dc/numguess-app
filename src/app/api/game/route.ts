@@ -29,18 +29,19 @@ export async function GET(req: NextRequest) {
       take: 20,
     });
 
-    // Compute stats
+    // Compute stats across all completed rounds so rematches in the same room count toward the scoreboard
     let wins = 0, losses = 0, ties = 0;
     for (const room of rooms) {
       const isP1 = room.player1Id === userId;
-      const lastRound = room.rounds[room.rounds.length - 1];
-      if (!lastRound?.winner) continue;
-      if (lastRound.winner === 'tie') ties++;
-      else if ((isP1 && lastRound.winner === 'p1') || (!isP1 && lastRound.winner === 'p2')) wins++;
-      else losses++;
+      for (const round of room.rounds) {
+        if (!round.winner) continue;
+        if (round.winner === 'tie') ties++;
+        else if ((isP1 && round.winner === 'p1') || (!isP1 && round.winner === 'p2')) wins++;
+        else losses++;
+      }
     }
 
-    return NextResponse.json({ rooms, stats: { wins, losses, ties, total: rooms.length } });
+    return NextResponse.json({ rooms, stats: { wins, losses, ties, total: wins + losses + ties } });
   }
 
   if (!roomId) return NextResponse.json({ error: 'roomId required' }, { status: 400 });

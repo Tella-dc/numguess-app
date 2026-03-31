@@ -268,7 +268,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
       // Notify opponent that guess was made (no value shown)
       socket.to(roomId).emit('game:opponentGuessed', { roomId, roundId, playerId });
 
-      // Check if both have guessed this round
+      // Check if both have guessed in the current attempt
       if (p1Guess !== null && p2Guess !== null) {
         const p1Correct = p1Guess === round.p2Secret;
         const p2Correct = p2Guess === round.p1Secret;
@@ -308,18 +308,20 @@ export function setupSocketHandlers(io: SocketIOServer) {
             p2Secret: round.p2Secret,
           });
         }
-        // If neither guessed correctly, next round starts
+        // If neither guessed correctly, keep the same secrets locked and allow another guess cycle
         else {
-          const nextRound = await prisma.gameRound.create({
+          await prisma.gameRound.update({
+            where: { id: roundId },
             data: {
-              roomId,
-              roundNumber: round.roundNumber + 1,
+              p1Guess: null,
+              p2Guess: null,
             },
           });
-          io.to(roomId).emit('game:nextRound', {
+
+          io.to(roomId).emit('game:continueGuessing', {
             roomId,
-            roundId: nextRound.id,
-            roundNumber: nextRound.roundNumber,
+            roundId,
+            roundNumber: round.roundNumber,
           });
         }
       }
@@ -334,17 +336,21 @@ export function setupSocketHandlers(io: SocketIOServer) {
     socket.on('game:playAgainAccepted', async (data: { roomId: string; player1Id: string; player2Id: string }) => {
       const { roomId, player1Id, player2Id } = data;
 
-      // Create new room
-      const newRoom = await prisma.gameRoom.create({
-        data: { player1Id, player2Id, status: 'active' },
-        include: {
-          player1: { select: { id: true, username: true, role: true, status: true, lastSeen: true } },
-          player2: { select: { id: true, username: true, role: true, status: true, lastSeen: true } },
+      const lastRound = await prisma.gameRound.findFirst({
+        where: { roomId },
+        orderBy: { roundNumber: 'desc' },
+      });
+
+      const nextRound = await prisma.gameRound.create({
+        data: {
+          roomId,
+          roundNumber: (lastRound?.roundNumber ?? 0) + 1,
         },
       });
 
-      await prisma.gameRound.create({
-        data: { roomId: newRoom.id, roundNumber: 1 },
+      await prisma.gameRoom.update({
+        where: { id: roomId },
+        data: { status: 'active' },
       });
 
       await prisma.user.updateMany({
@@ -352,18 +358,13 @@ export function setupSocketHandlers(io: SocketIOServer) {
         data: { status: 'in_game' },
       });
 
-      // Move sockets to new room
-      const p1Socket = io.sockets.sockets.get(onlineUsers.get(player1Id) || '');
-      const p2Socket = io.sockets.sockets.get(onlineUsers.get(player2Id) || '');
-      p1Socket?.leave(roomId);
-      p2Socket?.leave(roomId);
-      p1Socket?.join(newRoom.id);
-      p2Socket?.join(newRoom.id);
+      io.emit('player:statusChange', { userId: player1Id, status: 'in_game' });
+      io.emit('player:statusChange', { userId: player2Id, status: 'in_game' });
 
-      io.to(newRoom.id).emit('game:start', {
-        roomId: newRoom.id,
-        player1: newRoom.player1,
-        player2: newRoom.player2,
+      io.to(roomId).emit('game:rematchStarted', {
+        roomId,
+        roundId: nextRound.id,
+        roundNumber: nextRound.roundNumber,
       });
     });
 

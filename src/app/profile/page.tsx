@@ -87,15 +87,15 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <div className="glass rounded-2xl p-4 text-center">
               <div className="text-3xl font-bold text-green-400">{stats.wins}</div>
-              <div className="text-sm text-gray-400 mt-1">Wins</div>
+              <div className="text-sm text-gray-400 mt-1">Round Wins</div>
             </div>
             <div className="glass rounded-2xl p-4 text-center">
               <div className="text-3xl font-bold text-red-400">{stats.losses}</div>
-              <div className="text-sm text-gray-400 mt-1">Losses</div>
+              <div className="text-sm text-gray-400 mt-1">Round Losses</div>
             </div>
             <div className="glass rounded-2xl p-4 text-center">
               <div className="text-3xl font-bold text-yellow-400">{stats.ties}</div>
-              <div className="text-sm text-gray-400 mt-1">Ties</div>
+              <div className="text-sm text-gray-400 mt-1">Round Ties</div>
             </div>
             <div className="glass rounded-2xl p-4 text-center">
               <div className="text-3xl font-bold text-indigo-400">{winRate}%</div>
@@ -109,7 +109,7 @@ export default function ProfilePage() {
           <div className="glass rounded-2xl p-4 mb-6">
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-400">Win Rate</span>
-              <span className="font-medium">{stats.total} games played</span>
+              <span className="font-medium">{stats.total} completed rounds</span>
             </div>
             <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
               <div
@@ -135,10 +135,17 @@ export default function ProfilePage() {
               {history.map((game) => {
                 const isP1 = game.player1.id === session.user.id;
                 const opponent = isP1 ? game.player2 : game.player1;
-                const lastRound = game.rounds[game.rounds.length - 1];
-                const myResult = lastRound?.winner === 'tie'
+                const completedRounds = game.rounds.filter((round) => round.winner);
+                const myWins = completedRounds.filter((round) =>
+                  (isP1 && round.winner === 'p1') || (!isP1 && round.winner === 'p2')
+                ).length;
+                const opponentWins = completedRounds.filter((round) =>
+                  (isP1 && round.winner === 'p2') || (!isP1 && round.winner === 'p1')
+                ).length;
+                const ties = completedRounds.filter((round) => round.winner === 'tie').length;
+                const myResult = myWins === opponentWins
                   ? 'tie'
-                  : (isP1 && lastRound?.winner === 'p1') || (!isP1 && lastRound?.winner === 'p2')
+                  : myWins > opponentWins
                   ? 'win'
                   : 'loss';
 
@@ -153,7 +160,8 @@ export default function ProfilePage() {
                     <div>
                       <div className="font-medium">vs {opponent.username}</div>
                       <div className="text-sm text-gray-400 mt-0.5">
-                        {game.rounds.length} round{game.rounds.length !== 1 ? 's' : ''} •{' '}
+                        Score {myWins}-{opponentWins}{ties ? ` • ${ties} tie${ties !== 1 ? 's' : ''}` : ''} •{' '}
+                        {completedRounds.length} completed round{completedRounds.length !== 1 ? 's' : ''} •{' '}
                         {new Date(game.createdAt).toLocaleDateString()}
                       </div>
                     </div>
