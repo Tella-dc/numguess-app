@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("user") // "super_admin" | "admin" | "user"
+  status       String   @default("offline") // "online" | "offline" | "in_game" | "challenge_pending"
+  lastSeen     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  gamesAsP1    GameRoom[] @relation("Player1")
+  gamesAsP2    GameRoom[] @relation("Player2")
+  auditActions AuditLog[] @relation("Actor")
+  auditTargets AuditLog[] @relation("Target")
+}
+
+model GameRoom {
+  id        String   @id @default(cuid())
+  player1Id String
+  player2Id String
+  status    String   @default("waiting") // "waiting" | "active" | "finished"
+  createdAt DateTime @default(now())
+
+  player1 User        @relation("Player1", fields: [player1Id], references: [id])
+  player2 User        @relation("Player2", fields: [player2Id], references: [id])
+  rounds  GameRound[]
+}
+
+model GameRound {
+  id          String   @id @default(cuid())
+  roomId      String
+  roundNumber Int
+  p1Secret    Int?
+  p2Secret    Int?
+  p1Guess     Int?
+  p2Guess     Int?
+  winner      String?  // "p1" | "p2" | "tie" | null
+  createdAt   DateTime @default(now())
+
+  room GameRoom @relation(fields: [roomId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  targetId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  actor  User  @relation("Actor", fields: [actorId], references: [id])
+  target User? @relation("Target", fields: [targetId], references: [id])
+}
