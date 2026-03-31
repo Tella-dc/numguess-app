@@ -17,15 +17,22 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+	console.log("AUTH START", {
+		username: credentials?.username,
+    hasPassword: !!credentials?.password,
+  });
         if (!credentials?.username || !credentials?.password) {
-          throw new Error('Username and password are required');
+ console.log("AUTH FAIL: missing credentials");     
+     throw new Error('Username and password are required');
         }
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
         });
+console.log("AUTH USER:", user ? user.username : null);
 
         if (!user) {
+console.log("AUTH FAIL: user not found");
           throw new Error('Invalid username or password');
         }
 
@@ -35,9 +42,10 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!passwordValid) {
+console.log("AUTH FAIL: bad password");
           throw new Error('Invalid username or password');
         }
-
+	 console.log("AUTH SUCCESS:", user.username);
         return {
           id: user.id,
           username: user.username,
