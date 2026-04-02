@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Props {
   onGuess: (guess: number) => void;
@@ -20,6 +20,28 @@ const hintConfig = {
 export default function GuessInput({ onGuess, disabled, lastGuess, lastHint, opponentGuessed, alreadyGuessed }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  const [showHint, setShowHint] = useState(false);
+  const [hintFading, setHintFading] = useState(false);
+
+  useEffect(() => {
+    if (!lastHint || lastGuess === null) return;
+
+    setShowHint(true);
+    setHintFading(false);
+
+    const fadeTimeout = window.setTimeout(() => {
+      setHintFading(true);
+    }, 2600);
+
+    const hideTimeout = window.setTimeout(() => {
+      setShowHint(false);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(fadeTimeout);
+      window.clearTimeout(hideTimeout);
+    };
+  }, [lastHint, lastGuess]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +57,8 @@ export default function GuessInput({ onGuess, disabled, lastGuess, lastHint, opp
 
   const hint = lastHint ? hintConfig[lastHint] : null;
 
+  const shouldShowHint = showHint && hint && lastGuess !== null;
+
   return (
     <div className="animate-fade-in">
       <h3 className="text-lg font-semibold mb-1 text-center">Guess Their Number</h3>
@@ -43,8 +67,12 @@ export default function GuessInput({ onGuess, disabled, lastGuess, lastHint, opp
       </p>
 
       {/* Hint display */}
-      {hint && lastGuess !== null && (
-        <div className={`flex items-center gap-3 rounded-xl p-3 mb-4 border ${hint.bg} animate-fade-in`}>
+      {shouldShowHint && (
+        <div
+          className={`flex items-center gap-3 rounded-xl p-3 mb-4 border ${hint.bg} animate-fade-in transition-opacity duration-500 ${
+            hintFading ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
           <span className="text-2xl">{hint.icon}</span>
           <div>
             <div className={`font-semibold ${hint.color}`}>{hint.text}</div>
